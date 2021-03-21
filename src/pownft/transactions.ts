@@ -6,13 +6,21 @@ import { TargetAtom } from "../miner";
 
 
 
-export async function mineAtom(instance: Contract, targetAtom: TargetAtom, gasPrice: BigNumber) : Promise<TransactionResponse> {
+export async function mineAtom(instance: Contract, targetAtom: TargetAtom, gasPrice: BigNumber, dryRun: boolean) : Promise<TransactionResponse | false> {
     
     const value = targetAtom.cost;
 
-    console.log(`Issuing tx to mine atom ${targetAtom.tokenId} for ${formatEther(value)} eth using gas ${formatUnits(gasPrice, 'gwei')} using nonce ${targetAtom.nonce.toString()}`);
+    const prefix = dryRun ? '[DRY RUN] ' : '';
+
+    console.log(`${prefix}Issuing tx to mine atom ${targetAtom.tokenId} for ${formatEther(value)} eth using gas ${formatUnits(gasPrice, 'gwei')} using nonce ${targetAtom.nonce.toString()}`);
 
     // this will simulate the tx on chain, if anyone has mined a block it will fail with a "revert: difficulty" message
     const gasLimit = await instance.estimateGas.mine(targetAtom.nonce, {value, gasPrice});
-    return instance.mine(targetAtom.nonce, {value, gasPrice, gasLimit});
+
+    if (dryRun) {
+        return false;
+    } else {
+        return instance.mine(targetAtom.nonce, {value, gasPrice, gasLimit});
+    }
+    
 }

@@ -1,5 +1,5 @@
 import { Signer, VoidSigner } from "@ethersproject/abstract-signer";
-import { JsonRpcProvider } from "@ethersproject/providers";
+import { JsonRpcProvider, TransactionResponse } from "@ethersproject/providers";
 import { powNftContract } from "./contract/pownftv3";
 
 import { mineNextAtom } from "./miner";
@@ -8,20 +8,8 @@ import { mineAtom } from "./pownft/transactions";
 import { BigNumber } from "@ethersproject/bignumber";
 import { Wallet } from "@ethersproject/wallet";
 import { readFileSync } from "fs";
+import { join } from "path";
 import { formatUnits, parseUnits } from "@ethersproject/units";
-import { config } from "node:process";
-
-
-// // set thi to the max you are willing to pay
-// const GAS_LIMIT = parseUnits('200', 'gwei');
-
-// // number of cores you want to hammer.  somewhere between 50-80% of the cores on your machine
-// // is ideal (4-6 cores on an 8 core, for example).
-// const NUM_CORES = 4;
-
-// // number of nonces per task, tweak this so your loop duration is 5-10s
-// // 400000 works well for me
-// const CHUNK_SIZE = 400000;
 
 
 interface Config {
@@ -30,11 +18,13 @@ interface Config {
     numCores: number;
     gasLimit: BigNumber;
     chunkSize: number;
+    dryRun: boolean;
 }
 
 function loadConfig() : Config {
 
-    const config = JSON.parse(readFileSync('./config.json') as any);
+    const targetFile = join(__dirname, '..', 'config.json');
+    const config = JSON.parse(readFileSync(targetFile) as any);
     const accountPath = `m/44'/60'/0'/0/${config.index}`;
 
     const provider = new JsonRpcProvider(config.provider);
@@ -48,17 +38,22 @@ function loadConfig() : Config {
         numCores: config.numCores,
         gasLimit,
         chunkSize: config.chunkSize,
+        dryRun: config.dryRun,
     }    
 }
 
 async function main() {
 
-    const { provider, signer, numCores, chunkSize, gasLimit } = loadConfig();
+    const { provider, signer, numCores, chunkSize, gasLimit, dryRun } = loadConfig();
     
-    // fake signer, do not allow this to sign anything when mining an atom 
     const address = await signer.getAddress();
-    console.log(`Miner configured with address ${address}`);
+    console.log(`Miner configured with address ${address} using ${numCores} cores`);
 
+    if (dryRun) {
+        console.log("Running in dry run mode, no transactions will be submitted")
+    }
+
+    // guard, use a read-only signer while mining
     const voidSigner = new VoidSigner(address, provider);
     const instance = powNftContract(voidSigner);
 
@@ -78,11 +73,18 @@ async function main() {
     }
     console.log(`Gas price ${formatUnits(gasPrices.rapid, 'gwei')} is below the max of ${formatUnits(gasLimit, 'gwei')}`);
 
-    // const liveInstance = powNftContract(signer);
-    // const tx = await mineAtom(liveInstance, targetAtom, BigNumber.from(gasPrices.rapid));
-    // console.log(`Submitted transaction ${tx.hash}`);
-    // const txReceipt = await tx.wait();
-    // console.log('Transaction mined!');
+    if (dryRun) {
+        console.log('Dry run mode, estimating gas but will not issue tx');
+        const tx = await mineAtom(instance, targetAtom, BigNumber.from(gasPrices.rapid), dryRun);
+    } else {
+        // use the real signer
+        const liveInstance = powNftContract(signer);
+        const tx = (await mineAtom(liveInstance, targetAtom, BigNumber.from(gasPrices.rapid), dryRun)) as TransactionResponse;
+        console.log(`Submitted transaction ${tx.hash}`);
+        const txReceipt = await tx.wait();
+        console.log('Transaction mined!');
+    }
+    
 }
 
 main()

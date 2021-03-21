@@ -1,10 +1,13 @@
 # pownft-miner
 
-This is a typescript miner for the POWNFT smart contract.  This uses multiple cores (number of cores is configurable),
-and more efficient hashing code than the website (at time of writing).  On a linux laption running ubuntu, I'm able to
-get > 200k hashes/sec.
+This is a typescript miner for the POWNFT smart contract.  It uses multiple cores (configurable),
+and has more efficient hashing code than the website (at time of writing).  On a mid-grade laptop running ubuntu, I'm able to
+get > 200k hashes/sec using 4 cores.
 
-_USE THIS AT YOUR OWN RISK!_
+_DISCLAIMER: This miner will automatically submit an ethereum transaction when an atom is found, which requires access to a private key (seed phrase) stored in plain text.  This is bad, you should never do this.  You will loose all your funds and atoms if you are not careful.  Please delete the config file or clear the seed phrase from it when you are done using this.  USE THIS AT YOUR OWN RISK!_
+
+## Requirements
+- Node 12
 
 ## Config
 
@@ -22,7 +25,8 @@ The miner expects a file named `config.json` in the root directory.  You must cr
     "index": 0,
     "numCores": 4,
     "gasLimit": 200,
-    "chunkSize": 400000
+    "chunkSize": 400000,
+    "dryRun": false
 }
 ```
 
@@ -33,13 +37,15 @@ Where:
 - `numCores`: is the number of worker threads to use to mine hashes.  Use 50-80% of the cores on your machine (4-6 on an 8 core machine).
 - `gasLimit`: the max gas price you're willing to pay.  Above this, even if you find an atom, the transaction will not be sumitted.
 - `chunkSize`: number of nonces per "chunk" -- 400000 is a good value on my machine.  Tweak this if your loops are too slow (> 10s) or too fast (< 5s), it will likely vary by machine.
+- `dryRun`: true/false, whether or not to actually issue transactions.  Set this to `true` while testing this out.
 
 ## Usage
 
 ```sh
 $ git clone <this repo>
 $ yarn install
-$ # create a config.json
+$ cp config.sample.json config.json
+$ # edit config.json with your desired config
 $ yarn miner
 ```
 

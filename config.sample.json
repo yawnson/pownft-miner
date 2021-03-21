@@ -1,0 +1,9 @@
+{
+    "provider": "https://eth-mainnet.alchemyapi.io/v2/<my-key>",
+    "mnemonic": "some seeds go here",
+    "index": 0,
+    "numCores": 4,
+    "gasLimit": 200,
+    "chunkSize": 400000,
+    "dryRun": false
+}
